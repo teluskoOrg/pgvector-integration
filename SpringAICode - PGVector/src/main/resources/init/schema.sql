@@ -1,6 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS hstore;
-
 CREATE TABLE IF NOT EXISTS vector_store (
        id TEXT PRIMARY KEY, -- id should be TEXT (not UUID type)
        content TEXT,
