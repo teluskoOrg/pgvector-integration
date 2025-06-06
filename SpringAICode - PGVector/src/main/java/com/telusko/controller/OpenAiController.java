@@ -125,14 +125,57 @@ public class OpenAiController {
         return vectorStore.similaritySearch(text);
     }
 
-    @PostMapping("/api/ask")
-    public String getAnswerUsingRag(@RequestParam String query){
+//    @PostMapping("/api/ask")
+//    public String getAnswerUsingRag(@RequestParam String query){
+//
+//        return chatClient
+//                .prompt(query)
+//                .advisors(new QuestionAnswerAdvisor(vectorStore))
+//                .call()
+//                .content();
+//    }
 
-        return chatClient
-                .prompt(query)
-                .advisors(new QuestionAnswerAdvisor(vectorStore))
-                .call()
-                .content();
+    @PostMapping("/api/ask")
+    public String getAnswerUsingRag2(@RequestParam String query){
+
+        List<Document> documents = vectorStore.similaritySearch(
+                SearchRequest.builder()
+                        .query(query)
+                        .topK(5)                       // get top 5 most similar documents
+                        .similarityThreshold(0.7f)     // filter documents with similarity score below threshold
+                        .build()
+        );
+
+        // Build a combined context string from document contents
+        StringBuilder contextBuilder = new StringBuilder();
+        for (Document doc : documents) {
+            contextBuilder.append(doc.getFormattedContent()).append("\n");
+        }
+
+        String context = contextBuilder.toString();
+
+        // Fill template variables with user query and relevant context
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("userQuery", query);
+        variables.put("context", context);
+
+        PromptTemplate promptTemplate = PromptTemplate.builder()
+                .template("""
+                            Use the following context to answer the user's question.
+                            Context: {context}
+                                    
+                            Question: {userQuery}
+                            
+                            Respond in the following format:
+                            1. Summary
+                            2. Specific product features (if relevant)
+                            3. Recommendation (if applicable)
+                        """)
+                .variables(variables)
+                .build();
+
+        // Call the chat model and return the generated response
+        return chatClient.prompt(promptTemplate.create()).call().content();
     }
 
 }
